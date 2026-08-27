@@ -6,6 +6,7 @@ import { download, encodeMp3, encodeOpus, encodeWav } from './lib/encode'
 import { VoiceNote } from './components/VoiceNote'
 import { Dropzone } from './components/Dropzone'
 import { Logo } from './components/Logo'
+import { WordImage } from './components/WordImage'
 
 const MAX_CHARS = 6
 
@@ -261,6 +262,8 @@ export default function App() {
             )}
           </p>
         </section>
+
+        <WordImage word={chars.join('')} duration={source?.duration ?? null} />
 
         {/* The audio */}
         {!source ? (
