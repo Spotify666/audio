@@ -1,85 +1,59 @@
 # Waveprint
 
-Write a word into a voice note's waveform.
+Makes a voice note whose waveform draws a letter.
 
-You drop in an audio file, type a short word, and download a new file whose
-loudness envelope traces the shape of that word — so when a chat client draws
-its own waveform for the message, it draws your word instead of a random
-squiggle.
-
-Everything runs in the browser. There is no backend, and no file is uploaded
-anywhere.
+Runs entirely in the browser. Nothing is uploaded.
 
 ---
 
-## The constraint that drives the whole thing
+## Two things that decide the whole design
 
-WhatsApp's voice-note waveform is a **64-value array, each value 0–100**, stored
-in the message protobuf. It is computed by the *sending client* from the audio's
-amplitude, at send time. **No metadata field in an OGG, MP3 or WAV is read for
-this.** You cannot write the bytes you want into a downloadable file.
+**1. Only voice notes have a waveform.**
 
-The only thing under our control is the audio's amplitude envelope. WhatsApp
-divides the track into 64 segments, averages the absolute amplitude of each, and
-normalises. So if we impose a gain curve that matches the shape we want,
-WhatsApp's own analysis reproduces that shape — approximately.
+Send the same audio as an mp3 or m4a and WhatsApp treats it as a *document*: a
+generic orange audio icon — the same static picture for every file ever sent —
+and a plain seek bar. There is no waveform anywhere, so there is nothing for a
+shape to appear in.
 
-Three consequences the interface states plainly, next to the controls they
-affect:
+The 64-bar waveform belongs to voice notes. That means **Ogg Opus**, which is
+why it is the only format this app leads with. `.wav` is offered as a fallback
+for other players, but a wav will not render a waveform in WhatsApp either.
 
-1. **Approximate, not exact.** The dB-to-byte curve is not public and is not
-   linear. The result resembles the target; it does not match it.
-2. **The audio will sound chopped.** Forcing loudness up and down every ~200 ms
-   makes speech pulse. The smoothing slider trades waveform crispness against
-   audio harshness; nothing removes the effect.
-3. **Bars mirror around a centre line.** Only height carries meaning, so every
-   shape is symmetric top-to-bottom. `H` and `X` are the same silhouette. So are
-   `U` and `V`.
+**2. The audio is generated, not reshaped.**
 
-## How the processing works
+Taking someone's voice note and shoving its loudness up and down 64 times is
+what makes speech stutter and pulse. So the app does not do that. It builds a
+carrier — a hum, a wash of filtered noise, a chime — that holds a steady level,
+and the letter *is* that carrier's volume over time. There is nothing to
+distort, and the shape comes out exact rather than approximate: the measured
+envelope matches the target bar for bar.
 
-`src/lib/audio.ts`, in order:
+```
+src/lib/synth.ts   carrier + envelope + a correction pass
+src/lib/opus.ts    Ogg Opus via opus-recorder's encoder worker
+src/lib/glyphs.ts  the letters
+src/lib/word.ts    letters -> 64 bars
+```
 
-1. Decode with `decodeAudioData`, downmix to mono.
-2. Optionally trim near-silent head and tail (chat clients often trim it
-   themselves, which would shift the whole shape sideways).
-3. Split into 64 equal segments and measure each segment's RMS.
-4. Compute a per-segment gain so the segment's RMS lands at its target height,
-   clamped to a ceiling (default 4×) so silence is not amplified into hiss.
-5. Cross-fade the gain across each of the 63 boundaries with a raised cosine
-   (default 15 ms, adjustable 0–50 ms) so the output does not click.
-6. Never let a target segment be zero — the floor is 5. True silence reads as a
-   dropout, and clients sometimes trim it.
-7. Scale down if the result would clip.
+## One letter
 
-Then the **verification pass**: the output buffer is re-analysed with the same
-64-segment measurement, and *that* is what the "after" circle draws. It is not
-the target redrawn — it is what the file actually contains.
+A voice-note waveform is small. Sixty-four bars across roughly 170 points of
+width is not much, and the bars mirror around a centre line, so only height
+carries meaning: no horizontal strokes, no enclosed counters, no difference
+between top and bottom.
 
-## Shape sources
+One letter gets 48 of the 64 bars and reads. Three letters get 17 each and
+barely do. Five is mush, and the app says so instead of pretending.
 
-- **Text** — a bar font in `src/lib/barfont.ts`: each character is five column
-  heights, 0–100, plus a legibility rating and a note explaining why a weak
-  letter is weak. It is a plain data file, meant to be tuned by hand.
-- **Preset** — heartbeat, sine, sawtooth, staircase, pulse train, crescendo,
-  centre peak. These read better than text does.
-- **Draw** — a 64-column pad you drag across, snapped to steps of 5. Arrow keys
-  work too.
+Roughly a dozen shapes are genuinely distinguishable. `O I T L H U V W C J N A`
+are the strong ones. `B D Q R X Y Z` and most digits are marked weak in the
+interface, because they are.
 
-### Pacing
+Run this and look at the result before changing any of them:
 
-A phrase longer than about six characters cannot be legible across 64 columns.
-Pacing does not add resolution — it controls *when* each word passes under the
-playhead, so a phrase arrives in time with the audio:
-
-- **All at once** — words share the strip in proportion to their length.
-- **In time** — words are spaced evenly across the clip; `dwell` sets how long
-  each holds, `start` pushes the first word later to line up with the talking.
-- **Match speech** — bursts of sound in the source are detected and one word is
-  dropped onto each, so a word lands where a word is spoken.
-
-Between words the audio is held at 14 rather than the floor, so a short phrase
-over a long clip does not mute most of it.
+```bash
+npm run font     # renders every glyph, large and at true voice-note size
+```
 
 ## Running it
 
@@ -89,41 +63,31 @@ npm run dev
 ```
 
 ```bash
-npm run build      # static output in dist/
+npm run build    # static output in dist/
 npm run preview
-npm run assets     # regenerate favicon.svg, icon-512.png and og.png
-npm run single     # one self-contained HTML file in dist-single/
+npm run assets   # favicon.svg, icon-512.png, og.png
+npm run single   # the whole app as one self-contained HTML file
 ```
 
-`npm run single` inlines the entire app — scripts, styles, icon — into one HTML
-file you can open straight from disk or hand to someone who will not run a
-build. Only the webfonts are fetched; without a network it falls back to system
-faces and behaves identically.
-
 ## Deploy
-
-One command, from the repo root:
 
 ```bash
 npx vercel deploy --prod
 ```
 
-Vercel detects Vite automatically — build command `npm run build`, output
-directory `dist`. There is nothing to configure, no environment variables and no
-server: the whole thing is static files.
+Vercel detects Vite on its own — build `npm run build`, output `dist`. No
+environment variables, no server. Any static host works; upload `dist/`.
 
-Any static host works the same way. Upload `dist/`.
+## Sending it
+
+Attach the `.ogg`. Do not re-record it by holding the mic button — that plays
+the file through your speaker into the microphone and the shape is lost.
+
+The receiving client measures the file and draws its own bars using a curve that
+is not public and is not linear, so what lands there resembles the preview
+rather than matching it exactly.
 
 ## Stack
 
-Vite · React · TypeScript · Tailwind · Motion for the few transitions · canvas
-for every waveform · [`@breezystack/lamejs`](https://github.com/breezystack/lamejs)
-for MP3, loaded on demand so a visit that never downloads never fetches it.
-
-Type is Archivo (expanded, heavy) for display, Instrument Sans for body, and
-Martian Mono for anything numeric.
-
-## Non-goals
-
-No accounts, no analytics, no cookie banner, no server-side processing, no
-WhatsApp API integration, and no claim anywhere that the output is exact.
+Vite · React · TypeScript · Tailwind · canvas for the waveform ·
+[`opus-recorder`](https://github.com/chris-rudmin/opus-recorder) for Ogg Opus.

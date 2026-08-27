@@ -3,13 +3,12 @@
 @theme {
   --color-ink: #141b2e;
   --color-ink-deep: #0e1423;
-  --color-panel: #1b2439;
   --color-line: #3d4a63;
   --color-bone: #f2efe9;
   --color-signal: #ff7a45;
   --color-mint: #7fd1a8;
 
-  --font-display: 'Archivo', 'Archivo Expanded', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
   --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: 'Martian Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
@@ -25,24 +24,8 @@
     background-color: var(--color-ink);
     color: var(--color-bone);
     font-family: var(--font-sans);
-    font-size: 16px;
-    line-height: 1.55;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
-  }
-
-  /* Instrument-panel ground: a millimetre grid, barely there. */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    background-image:
-      linear-gradient(to right, rgba(61, 74, 99, 0.16) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(61, 74, 99, 0.16) 1px, transparent 1px);
-    background-size: 48px 48px;
-    mask-image: radial-gradient(ellipse 120% 80% at 50% 0%, #000 20%, transparent 78%);
   }
 
   ::selection {
@@ -53,13 +36,10 @@
   :focus-visible {
     outline: 2px solid var(--color-signal);
     outline-offset: 3px;
-    border-radius: 2px;
   }
 
   input,
-  button,
-  textarea,
-  select {
+  button {
     font: inherit;
     color: inherit;
   }
@@ -72,7 +52,7 @@
     font-variation-settings: 'wdth' 125;
     font-weight: 800;
     letter-spacing: -0.015em;
-    line-height: 0.95;
+    line-height: 1;
   }
 
   .u-label {
@@ -81,7 +61,7 @@
     font-weight: 500;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: color-mix(in srgb, var(--color-bone) 46%, transparent);
+    color: color-mix(in srgb, var(--color-bone) 42%, transparent);
   }
 
   .u-data {
@@ -89,43 +69,13 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
   }
-
-  /* Panels are drawn like measured plates: hairline rule, corner ticks. */
-  .u-panel {
-    position: relative;
-    background: color-mix(in srgb, var(--color-panel) 72%, transparent);
-    border: 1px solid color-mix(in srgb, var(--color-line) 55%, transparent);
-  }
-
-  .u-tick::before,
-  .u-tick::after {
-    content: '';
-    position: absolute;
-    width: 7px;
-    height: 7px;
-    border: 1px solid color-mix(in srgb, var(--color-signal) 65%, transparent);
-    pointer-events: none;
-  }
-  .u-tick::before {
-    top: -1px;
-    left: -1px;
-    border-right: 0;
-    border-bottom: 0;
-  }
-  .u-tick::after {
-    bottom: -1px;
-    right: -1px;
-    border-left: 0;
-    border-top: 0;
-  }
 }
 
-/* Range inputs, drawn as slide-rule tracks rather than OS default. */
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 28px;
+  height: 26px;
   background: transparent;
   cursor: pointer;
 }
@@ -140,15 +90,15 @@ input[type='range']::-moz-range-track {
 input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 6px;
-  height: 20px;
-  margin-top: -9px;
+  height: 18px;
+  margin-top: -8px;
   background: var(--color-signal);
   border: 0;
   border-radius: 1px;
 }
 input[type='range']::-moz-range-thumb {
   width: 6px;
-  height: 20px;
+  height: 18px;
   background: var(--color-signal);
   border: 0;
   border-radius: 1px;
@@ -159,7 +109,6 @@ input[type='range']::-moz-range-thumb {
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
 }

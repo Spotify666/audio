@@ -3,18 +3,20 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Shape an audio file's loudness envelope so WhatsApp's voice-note waveform draws your word.",
+  "description": "Makes a voice note whose waveform draws a letter.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false",
     "assets": "node scripts/gen-assets.mjs",
-    "single": "node scripts/build-singlefile.mjs"
+    "single": "node scripts/build-singlefile.mjs",
+    "font": "node scripts/preview-font.mjs"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
     "motion": "^13.1.1",
+    "opus-recorder": "^8.0.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

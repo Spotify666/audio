@@ -199,20 +199,14 @@ writeFileSync(
   mark(s, 96, 92, 40, SIGNAL)
   text(s, 'WAVEPRINT', 158, 66, 8, BONE)
 
-  // The word WAVE in the bar font, mirrored, exactly as the app would send it.
-  const GLYPHS = {
-    W: [100, 40, 80, 40, 100],
-    A: [30, 70, 100, 70, 30],
-    V: [100, 60, 20, 60, 100],
-    E: [100, 55, 50, 45, 45],
-  }
-  const cols = []
-  ;['W', 'A', 'V', 'E'].forEach((c, i) => {
-    if (i) cols.push(0)
-    cols.push(...GLYPHS[c])
-  })
+  // The letter O, exactly as the app would send it: one glyph, 64 bars.
+  const O = [10, 45, 85, 100, 100, 100, 100, 100, 100, 100, 85, 45, 10]
   const N = 64
-  const values = Array.from({ length: N }, (_, i) => cols[Math.floor((i * cols.length) / N)])
+  const PADDING = 8
+  const values = new Array(N).fill(6)
+  for (let i = 0; i < N - PADDING * 2; i++) {
+    values[PADDING + i] = O[Math.floor((i * O.length) / (N - PADDING * 2))]
+  }
 
   const fieldX = 96
   const fieldW = W - 192
@@ -226,7 +220,7 @@ writeFileSync(
   })
 
   s.rect(96, 520, W - 192, 1, LINE, 0.7)
-  text(s, '64 BARS · MIRRORED · APPROXIMATE', 96, 552, 5, BONE, 0.55)
+  text(s, 'ONE LETTER · 64 BARS · MIRRORED', 96, 552, 5, BONE, 0.55)
   writePng(join(PUB, 'og.png'), W, H, s.buf)
 }
 
