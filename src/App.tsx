@@ -77,13 +77,18 @@ function usePlayer(url: string | null) {
 
 export default function App() {
   const [word, setWord] = useState('WOW')
-  const [smoothing, setSmoothing] = useState(15)
+  const [smoothing, setSmoothing] = useState(50)
   const [scale, setScale] = useState(1)
 
   const [file, setFile] = useState<File | null>(null)
   const [source, setSource] = useState<Source | null>(null)
   const [originalUrl, setOriginalUrl] = useState<string | null>(null)
-  const [shaped, setShaped] = useState<{ url: string; bars: number[]; samples: Float32Array } | null>(null)
+  const [shaped, setShaped] = useState<{
+    url: string
+    bars: number[]
+    samples: Float32Array
+    match: number
+  } | null>(null)
   const [busy, setBusy] = useState(false)
   const [saving, setSaving] = useState<'mp3' | 'ogg' | 'wav' | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -117,11 +122,11 @@ export default function App() {
   useEffect(() => {
     if (!source) return
     const id = setTimeout(() => {
-      const samples = reshape(source.mono, source.rate, target.columns, smoothing)
+      const { samples, match } = reshape(source.mono, source.rate, target.columns, smoothing)
       const url = URL.createObjectURL(encodeWav(samples, source.rate))
       setShaped((prev) => {
         if (prev) URL.revokeObjectURL(prev.url)
-        return { url, bars: measureBars(samples), samples }
+        return { url, bars: measureBars(samples), samples, match }
       })
     }, 250)
     return () => clearTimeout(id)
@@ -187,7 +192,7 @@ export default function App() {
             <div className="flex flex-col gap-1.5">
               {source && (
                 <span className="u-label self-end" style={{ color: '#FF7A45' }}>
-                  After · processed
+                  After · processed{shaped ? ` · ${shaped.match}% match` : ''}
                 </span>
               )}
               <VoiceNote
@@ -275,13 +280,14 @@ export default function App() {
                 id="smoothing"
                 type="range"
                 min={0}
-                max={50}
+                max={150}
                 step={1}
                 value={smoothing}
                 onChange={(e) => setSmoothing(Number(e.target.value))}
               />
               <p className="text-[12px] leading-snug text-bone/40">
-                Low keeps the shape crisp and the audio choppy; high is easier on the ears.
+                Low is crisp but choppy; high sounds like smooth volume swells and blurs the shape a
+                little.
               </p>
             </section>
 

@@ -114,22 +114,62 @@ function applyGainCurve(
   return out
 }
 
+/** The loudest stretch of the clip, reused to fill segments the gain cannot reach. */
+function extractTexture(mono: Float32Array, rate: number): Float32Array {
+  const win = Math.min(Math.max(rate, 1), Math.max(1, Math.floor(mono.length / 4)))
+  const hop = Math.max(1, Math.floor(win / 4))
+  let best = 0
+  let bestAt = 0
+  for (let a = 0; a + win <= mono.length; a += hop) {
+    let sum = 0
+    for (let s = a; s < a + win; s++) sum += mono[s] * mono[s]
+    if (sum > best) {
+      best = sum
+      bestAt = a
+    }
+  }
+  const tex = mono.slice(bestAt, bestAt + win)
+  // Fade the loop ends so repeats do not click.
+  const edge = Math.min(Math.floor(rate * 0.01), Math.floor(tex.length / 4))
+  for (let s = 0; s < edge; s++) {
+    const w = smoothstep(s / edge)
+    tex[s] *= w
+    tex[tex.length - 1 - s] *= w
+  }
+  return tex
+}
+
+const rmsOf = (a: Float32Array, from: number, to: number) => {
+  let sum = 0
+  for (let s = from; s < to; s++) sum += a[s] * a[s]
+  return Math.sqrt(sum / Math.max(1, to - from))
+}
+
+export interface Reshaped {
+  samples: Float32Array
+  /** 0-100 · how closely the output's measured bars follow the word. */
+  match: number
+}
+
 /**
- * Scale each segment's loudness toward its target height. Two passes: a coarse
- * one, then a fine correction measured off the intermediate result, so the
- * output's envelope lands as close to the word as the source allows. A silent
- * segment stays silent — no gain can make a shape out of nothing.
+ * Scale each segment's loudness toward its target height: a coarse pass, then
+ * a fine correction measured off the intermediate result. Where the source is
+ * too quiet for any reasonable gain to reach the target — silence cannot be
+ * amplified into a letter — the deficit is filled with a low loop of the
+ * clip's own loudest stretch, so the shape survives pauses in the recording.
  */
 export function reshape(
   mono: Float32Array,
   rate: number,
   targets: number[],
   smoothingMs: number,
-): Float32Array {
+): Reshaped {
   let out = mono
   const meanTarget = targets.reduce((a, b) => a + b, 0) / targets.length || 1
+  const texture = extractTexture(mono, rate)
+  const textureRms = rmsOf(texture, 0, texture.length) || 1e-9
 
-  for (const ceiling of [4, 2]) {
+  for (const ceiling of [6, 2]) {
     const rms = segmentRms(out)
     let overall = 0
     for (let i = 0; i < out.length; i++) overall += out[i] * out[i]
@@ -141,10 +181,29 @@ export function reshape(
         continue
       }
       const desired = overall * (targets[i] / meanTarget)
-      const want = desired / rms[i]
-      gains[i] = Math.min(ceiling, Math.max(0.0005, want))
+      gains[i] = Math.min(ceiling, Math.max(0.0005, desired / rms[i]))
     }
     out = applyGainCurve(out === mono ? mono.slice() : out, gains, rate, smoothingMs)
+
+    if (ceiling !== 6) continue
+    // Fill what the gain could not reach.
+    const n = out.length
+    const measured = segmentRms(out)
+    const edge = Math.min(Math.floor(rate * 0.015), Math.floor(n / COLUMNS / 4))
+    for (let i = 0; i < COLUMNS; i++) {
+      const desired = overall * (targets[i] / meanTarget)
+      if (measured[i] >= desired * 0.7) continue
+      const deficit = Math.sqrt(Math.max(0, desired * desired - measured[i] * measured[i]))
+      const k = deficit / textureRms
+      const a = Math.floor((i * n) / COLUMNS)
+      const b = i === COLUMNS - 1 ? n : Math.floor(((i + 1) * n) / COLUMNS)
+      for (let s = a; s < b; s++) {
+        let w = 1
+        if (s - a < edge) w = smoothstep((s - a) / edge)
+        else if (b - s < edge) w = smoothstep((b - s) / edge)
+        out[s] += texture[(s - a) % texture.length] * k * w
+      }
+    }
   }
 
   let peak = 0
@@ -153,5 +212,9 @@ export function reshape(
     const k = 0.95 / peak
     for (let i = 0; i < out.length; i++) out[i] *= k
   }
-  return out
+
+  const bars = measureBars(out)
+  let err = 0
+  for (let i = 0; i < COLUMNS; i++) err += Math.abs(bars[i] - targets[i])
+  return { samples: out, match: Math.max(0, Math.round(100 - err / COLUMNS)) }
 }
