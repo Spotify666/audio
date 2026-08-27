@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { COLUMNS } from '../lib/word'
-import { formatTime } from '../lib/opus'
+import { formatTime } from '../lib/encode'
 
 /**
  * An outgoing voice note, drawn the way WhatsApp draws one. This is the only
@@ -11,7 +11,8 @@ import { formatTime } from '../lib/opus'
 
 const BAR_IDLE = '#9EACA4'
 const BAR_PLAYED = '#0E8A6E'
-const BUBBLE = '#D9FDD3'
+const BUBBLE_OUT = '#D9FDD3'
+const BUBBLE_IN = '#FFFFFF'
 const INK = '#111B21'
 const MUTED = '#667781'
 
@@ -22,6 +23,8 @@ interface Props {
   playing: boolean
   onToggle: () => void
   scale: number
+  /** 'out' is a green sent bubble, 'in' a white received one. */
+  variant?: 'in' | 'out'
 }
 
 function Waveform({ bars, progress, width, height }: { bars: number[]; progress: number; width: number; height: number }) {
@@ -63,7 +66,7 @@ function Waveform({ bars, progress, width, height }: { bars: number[]; progress:
   return <canvas ref={ref} style={{ width, height, display: 'block' }} aria-hidden />
 }
 
-export function VoiceNote({ bars, duration, progress, playing, onToggle, scale }: Props) {
+export function VoiceNote({ bars, duration, progress, playing, onToggle, scale, variant = 'out' }: Props) {
   return (
     <div
       style={{
@@ -74,9 +77,9 @@ export function VoiceNote({ bars, duration, progress, playing, onToggle, scale }
     >
       <div
         style={{
-          background: BUBBLE,
+          background: variant === 'out' ? BUBBLE_OUT : BUBBLE_IN,
           borderRadius: 8 * scale,
-          borderTopRightRadius: 0,
+          ...(variant === 'out' ? { borderTopRightRadius: 0 } : { borderTopLeftRadius: 0 }),
           padding: `${7 * scale}px ${8 * scale}px ${5 * scale}px`,
           boxShadow: `0 ${1 * scale}px ${1 * scale}px rgba(11,20,26,.13)`,
         }}
@@ -168,12 +171,14 @@ export function VoiceNote({ bars, duration, progress, playing, onToggle, scale }
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 3 * scale }}>
             <span style={{ fontSize: 11 * scale, color: MUTED }}>8:13 am</span>
-            <svg width={15 * scale} height={11 * scale} viewBox="0 0 16 11" aria-hidden>
-              <path
-                d="M11.1.5 5.3 8.2 3 5.9l-.8.8 3.2 3.2zm3.6 0L8.9 8.2l-.6-.6-.8.8 1.4 1.5z"
-                fill="#53BDEB"
-              />
-            </svg>
+            {variant === 'out' && (
+              <svg width={15 * scale} height={11 * scale} viewBox="0 0 16 11" aria-hidden>
+                <path
+                  d="M11.1.5 5.3 8.2 3 5.9l-.8.8 3.2 3.2zm3.6 0L8.9 8.2l-.6-.6-.8.8 1.4 1.5z"
+                  fill="#53BDEB"
+                />
+              </svg>
+            )}
           </span>
         </div>
       </div>

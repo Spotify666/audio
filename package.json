@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
-    "motion": "^13.1.1",
     "opus-recorder": "^8.0.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
