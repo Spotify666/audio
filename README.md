@@ -92,7 +92,13 @@ npm run dev
 npm run build      # static output in dist/
 npm run preview
 npm run assets     # regenerate favicon.svg, icon-512.png and og.png
+npm run single     # one self-contained HTML file in dist-single/
 ```
+
+`npm run single` inlines the entire app — scripts, styles, icon — into one HTML
+file you can open straight from disk or hand to someone who will not run a
+build. Only the webfonts are fetched; without a network it falls back to system
+faces and behaves identically.
 
 ## Deploy
 
