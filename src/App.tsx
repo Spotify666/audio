@@ -197,6 +197,7 @@ export default function App() {
                 playing={after.playing}
                 onToggle={after.toggle}
                 scale={scale}
+                disabled={!source}
               />
             </div>
           </div>

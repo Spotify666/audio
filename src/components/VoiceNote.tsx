@@ -23,6 +23,8 @@ interface Props {
   playing: boolean
   onToggle: () => void
   scale: number
+  /** No audio behind this bubble yet — grey the play control out. */
+  disabled?: boolean
   /** 'out' is a green sent bubble, 'in' a white received one. */
   variant?: 'in' | 'out'
 }
@@ -66,7 +68,7 @@ function Waveform({ bars, progress, width, height }: { bars: number[]; progress:
   return <canvas ref={ref} style={{ width, height, display: 'block' }} aria-hidden />
 }
 
-export function VoiceNote({ bars, duration, progress, playing, onToggle, scale, variant = 'out' }: Props) {
+export function VoiceNote({ bars, duration, progress, playing, onToggle, scale, variant = 'out', disabled }: Props) {
   return (
     <div
       style={{
@@ -87,8 +89,10 @@ export function VoiceNote({ bars, duration, progress, playing, onToggle, scale, 
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 * scale }}>
           <button
             type="button"
-            onClick={onToggle}
+            onClick={disabled ? undefined : onToggle}
             aria-label={playing ? 'Pause preview' : 'Play preview'}
+            aria-disabled={disabled || undefined}
+            title={disabled ? 'Add audio below to hear it' : undefined}
             style={{
               flex: '0 0 auto',
               width: 26 * scale,
@@ -97,7 +101,8 @@ export function VoiceNote({ bars, duration, progress, playing, onToggle, scale, 
               padding: 0,
               background: 'transparent',
               color: '#54656F',
-              cursor: 'pointer',
+              opacity: disabled ? 0.3 : 1,
+              cursor: disabled ? 'default' : 'pointer',
               display: 'grid',
               placeItems: 'center',
             }}
